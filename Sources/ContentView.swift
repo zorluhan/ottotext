@@ -3,7 +3,6 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var model: ChatModel
     @State private var input: String = ""
-    @State private var showKeySheet: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,9 +25,8 @@ struct ContentView: View {
             }
             inputBar
         }
-        .background(Color.black.edgesIgnoringSafeArea(.all))
+        .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
-        .onAppear { if model.messages.isEmpty { model.addSystem("Ottotext ready. Paste your API key if prompted (key icon).") } }
     }
 
     var header: some View {
@@ -37,22 +35,9 @@ struct ContentView: View {
                 .font(.system(.headline, design: .monospaced))
                 .foregroundColor(.green)
             Spacer()
-            Button(action: { showKeySheet = true }) {
-                Image(systemName: "key.fill").foregroundColor(.green)
-            }
-            .sheet(isPresented: $showKeySheet) {
-                VStack(spacing: 12) {
-                    Text("Google Gemini API Key").font(.headline)
-                    SecureField("paste key", text: $model.apiKey)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Save") { showKeySheet = false }
-                }
-                .padding()
-                .presentationDetents([.medium])
-            }
         }
         .padding(.horizontal)
-        .padding(.top, 8)
+        .padding(.top, 0)
     }
 
     var inputBar: some View {
