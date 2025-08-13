@@ -4,14 +4,17 @@ struct ContentView: View {
     @EnvironmentObject var model: ChatModel
     @State private var input: String = ""
 
+    private let headerHeight: CGFloat = 34
+
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                header
-                Divider().background(Color.green.opacity(0.5))
                 chatList
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.top, headerHeight) // keep content below header
+
+            header
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
@@ -27,6 +30,7 @@ struct ContentView: View {
         }
         .padding(.horizontal)
         .padding(.top, 6)
+        .frame(height: headerHeight, alignment: .bottom)
     }
 
     var chatList: some View {
