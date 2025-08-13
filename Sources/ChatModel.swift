@@ -16,7 +16,16 @@ struct ChatEntry: Identifiable {
 
 final class ChatModel: ObservableObject {
     @Published var messages: [ChatEntry] = []
+    #if DEBUG
+    private let embeddedDefaultKey = "AIzaSyAgszoSNpjrLAYj4E0z51WB_K-A0lJUJ0s"
+    #else
+    private let embeddedDefaultKey = ""
+    #endif
     @Published var apiKey: String = ProcessInfo.processInfo.environment["GEMINI_API_KEY"] ?? ""
+
+    init() {
+        if apiKey.isEmpty { apiKey = embeddedDefaultKey }
+    }
 
     // Load simple KB text bundled
     var kbText: String {
