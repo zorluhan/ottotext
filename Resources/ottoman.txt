@@ -1,0 +1,5 @@
+Ottoman orthography guidance (short):
+- Convert Turkish Latin text to Ottoman Arabic script without translation.
+- Preserve punctuation and numbers.
+- Use common forms (e.g., ك for k, گ for g before front vowels, ق otherwise; ى for i in final; و for u/o; ي for i/e).
+- When word ends with -n and represents -ng, prefer final NG (ﯓ) if available.
