@@ -4,21 +4,15 @@ struct ContentView: View {
     @EnvironmentObject var model: ChatModel
     @State private var input: String = ""
 
-    private let headerHeight: CGFloat = 34
-
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            VStack(spacing: 0) {
-                chatList
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(.top, headerHeight) // keep content below header
-
+        VStack(spacing: 0) {
             header
+            Divider().background(Color.green.opacity(0.5))
+            chatList
+            inputBar
         }
-        .background(Color.black.ignoresSafeArea())
+        .background(Color.black.edgesIgnoringSafeArea(.all))
         .preferredColorScheme(.dark)
-        .safeAreaInset(edge: .bottom) { inputBar.background(Color.black) }
     }
 
     var header: some View {
@@ -29,8 +23,7 @@ struct ContentView: View {
             Spacer()
         }
         .padding(.horizontal)
-        .padding(.top, 6)
-        .frame(height: headerHeight, alignment: .bottom)
+        .padding(.top, 8)
     }
 
     var chatList: some View {
@@ -66,8 +59,7 @@ struct ContentView: View {
             }
             .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .padding([.horizontal, .top])
-        .padding(.bottom, 8)
+        .padding()
     }
 
     func send() {
