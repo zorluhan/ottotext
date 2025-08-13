@@ -22,7 +22,7 @@ final class ChatModel: ObservableObject {
     var kbText: String {
         if let url = Bundle.main.url(forResource: "ottoman", withExtension: "txt"),
            let s = try? String(contentsOf: url, encoding: .utf8) {
-            return String(s.prefix(120_000))
+            return String(s.prefix(80_000)) // keep prompt small
         }
         return ""
     }
@@ -38,45 +38,71 @@ final class ChatModel: ObservableObject {
         }
         let urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=\(apiKey)"
         guard let endpoint = URL(string: urlStr) else { return }
-        var req = URLRequest(url: endpoint)
-        req.httpMethod = "POST"
-        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let system = "You are an expert Ottoman Turkish scribe. Convert modern Turkish (Latin) into Ottoman Arabic script. Return only the Ottoman-script text; no explanations."
-        let ref = kbText.isEmpty ? "" : "\n\nReference about orthography (truncate if needed):\n" + kbText
-        let combined = system + ref + "\n\nText to convert:\n" + text
+        func makeRequest(maxTokens: Int) -> URLRequest {
+            var req = URLRequest(url: endpoint)
+            req.httpMethod = "POST"
+            req.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let payload: [String: Any] = [
-            "contents": [["role": "user", "parts": [["text": combined]]]],
-            "generationConfig": ["temperature": 0.0, "maxOutputTokens": 1024]
-        ]
-        req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            let system = "You are an expert Ottoman Turkish scribe. Convert modern Turkish (Latin) into Ottoman Arabic script. Return only the Ottoman-script text; no explanations."
+            let ref = kbText.isEmpty ? "" : "\n\nReference about orthography (truncate if needed):\n" + kbText
+            let combined = system + ref + "\n\nText to convert:\n" + text
+
+            let payload: [String: Any] = [
+                "contents": [["role": "user", "parts": [["text": combined]]]],
+                "generationConfig": [
+                    "temperature": 0.0,
+                    "maxOutputTokens": maxTokens,
+                    "responseMimeType": "text/plain"
+                ]
+            ]
+            req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            return req
+        }
 
         do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
-            guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-            let body = String(data: data, encoding: .utf8) ?? "<no-body>"
-            if http.statusCode != 200 {
-                print("Gemini HTTP", http.statusCode, body)
-                await MainActor.run { self.addAssistant("The system is not available right now. Please try again later.") }
+            // First try with a generous cap
+            var req = makeRequest(maxTokens: 2048)
+            var (data, resp) = try await URLSession.shared.data(for: req)
+            var http = resp as? HTTPURLResponse
+            var body = String(data: data, encoding: .utf8) ?? "<no-body>"
+
+            if http?.statusCode == 200, let text = parseText(data) {
+                await MainActor.run { self.addAssistant(text) }
                 return
             }
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                if let cands = json["candidates"] as? [[String: Any]],
-                   let content = cands.first?["content"] as? [String: Any],
-                   let parts = content["parts"] as? [[String: Any]],
-                   let t = parts.first?["text"] as? String {
-                    await MainActor.run { self.addAssistant(t.trimmingCharacters(in: .whitespacesAndNewlines)) }
-                    return
-                }
-                // Log prompt feedback/finish reason if available
-                let feedback = json["promptFeedback"] ?? json
-                print("Gemini no-text json:", feedback)
+
+            // If MAX_TOKENS or no text, retry with larger cap
+            req = makeRequest(maxTokens: 4096)
+            (data, resp) = try await URLSession.shared.data(for: req)
+            http = resp as? HTTPURLResponse
+            body = String(data: data, encoding: .utf8) ?? "<no-body>"
+
+            if http?.statusCode == 200, let text = parseText(data) {
+                await MainActor.run { self.addAssistant(text) }
+                return
             }
-            await MainActor.run { self.addAssistant("No text returned.") }
+
+            print("Gemini HTTP", http?.statusCode ?? -1, body)
+            await MainActor.run { self.addAssistant("The system is not available right now. Please try again later.") }
         } catch {
             print("Gemini error:", error)
             await MainActor.run { self.addAssistant("The system is not available right now. Please try again later.") }
         }
+    }
+
+    private func parseText(_ data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        if let cands = json["candidates"] as? [[String: Any]],
+           let content = cands.first?["content"] as? [String: Any],
+           let parts = content["parts"] as? [[String: Any]],
+           let t = parts.first?["text"] as? String {
+            return t.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let finish = (json["candidates"] as? [[String: Any]])?.first?["finishReason"] as? String {
+            print("finishReason:", finish)
+        }
+        print("no-text json:", json)
+        return nil
     }
 }
