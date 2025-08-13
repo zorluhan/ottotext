@@ -5,52 +5,65 @@ struct ContentView: View {
     @State private var input: String = ""
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider().background(Color.green.opacity(0.5))
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(model.messages) { m in
-                            MessageRow(entry: m)
-                                .id(m.id)
-                        }
-                    }.padding(.horizontal)
-                }
-                .onChange(of: model.messages.count) { _ in
-                    if let last = model.messages.last?.id {
-                        withAnimation { proxy.scrollTo(last, anchor: .bottom) }
-                    }
-                }
+        ZStack {
+            VStack(spacing: 0) {
+                header
+                Divider().background(Color.green.opacity(0.5))
+                chatList
             }
-            inputBar
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .safeAreaInset(edge: .bottom) { inputBar.background(Color.black) }
     }
 
     var header: some View {
         HStack {
             Text("ottotext")
-                .font(.system(.headline, design: .monospaced))
+                .font(.system(size: 16, weight: .semibold, design: .monospaced))
                 .foregroundColor(.green)
             Spacer()
         }
         .padding(.horizontal)
-        .padding(.top, 0)
+        .padding(.top, 6)
+    }
+
+    var chatList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(model.messages) { m in
+                        MessageRow(entry: m)
+                            .id(m.id)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 12)
+            }
+            .onChange(of: model.messages.count) { _ in
+                if let last = model.messages.last?.id {
+                    withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                }
+            }
+        }
     }
 
     var inputBar: some View {
         HStack(spacing: 8) {
             TextField("Type Turkish…", text: $input)
                 .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.sentences)
+                .keyboardType(.default)
+                .disableAutocorrection(false)
                 .onSubmit(send)
             Button(action: send) {
                 Image(systemName: "arrow.up.circle.fill").font(.system(size: 26))
             }
             .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .padding()
+        .padding([.horizontal, .top])
+        .padding(.bottom, 8)
     }
 
     func send() {
