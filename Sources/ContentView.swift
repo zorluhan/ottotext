@@ -4,12 +4,22 @@ struct ContentView: View {
     @EnvironmentObject var model: ChatModel
     @State private var input: String = ""
 
+    private var safeTopInset: CGFloat {
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.top ?? 0
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                // main content below header
+                Divider().background(Color.green.opacity(0.5))
+                chatList
+                inputBar
+            }
+            .padding(.top, safeTopInset + 24)
+
             header
-            Divider().background(Color.green.opacity(0.5))
-            chatList
-            inputBar
+                .padding(.top, safeTopInset + 4)
         }
         .background(Color.black.edgesIgnoringSafeArea(.all))
         .preferredColorScheme(.dark)
@@ -23,7 +33,6 @@ struct ContentView: View {
             Spacer()
         }
         .padding(.horizontal)
-        .padding(.top, 8)
     }
 
     var chatList: some View {
